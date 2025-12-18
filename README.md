@@ -1,5 +1,4 @@
----
-
+```
 # SolidJS 단계별 실습 가이드 (TSX · Vinxi 기준)
 
 > 기준 환경
@@ -8,255 +7,233 @@
 * Vinxi dev server
 * `npm run dev` 실행 중
 * `src/App.tsx` 기준
+```
+
+# SolidJS 프론트 기본기 & SPA 설계 가이드 (실무 기준)
+
+본 문서는 SolidJS를 사용한 프론트엔드 개발 시  
+**필수로 알아야 할 기본 API와 SPA 설계 원칙**을 실무 관점에서 정리한 문서입니다.
+
+React 경험자를 기준으로 작성되었으며,  
+과도한 추상화 없이 **Solid의 강점을 최대한 활용하는 기준**을 제시합니다.
 
 ---
 
-## ✅ STEP 0. 프로젝트 상태 확인 (기준점)
+## 1️. SolidJS 프론트 기본기 – 실무 체크리스트
+
+### 🔹 A. 상태 / 반응성 (Core Runtime)
+
+| 구분 | API | 역할 | 실무 사용 포인트 | 참고 파일 |
+|---|---|---|---|---|
+| 상태 | createSignal | 단일 값 상태 | 입력값, 토글, 플래그 | [Basic1.tsx](src/components/Basic1.tsx) |
+| 파생 | createMemo | 계산 캐시 | 필터링, 계산값 | [Basic2.tsx](src/components/Basic2.tsx) |
+| 부수효과 | createEffect | 반응형 사이드 이펙트 | 로깅, 외부 연동 | [Basic3.tsx](src/components/Basic3.tsx) |
+| 배치 | batch | 업데이트 묶기 | 이벤트 핸들러 | [Basic9.tsx](src/components/Basic9.tsx) |
+| 의존성 제어 | untrack | 추적 차단 | effect 내부 참조 | [Basic8.tsx](src/components/Basic8.tsx) |
+
+---
+
+### 🔹 B. 컬렉션 / 구조화 상태
+
+| 구분 | API | 역할 | 사용 기준 | 참고 파일 |
+|---|---|---|---|---|
+| 리스트 렌더 | `<For>` | 배열 렌더 | map 대체 | [Basic4.tsx](src/components/Basic4.tsx) |
+| 구조적 상태 | createStore | 객체/배열 상태 | 폼, 리스트 | [Basic6.tsx](src/components/Basic6.tsx) |
+| 상태 변경 | setStore | 부분 업데이트 | 불변성 관리 불필요 | [Basic6.tsx](src/components/Basic6.tsx) |
+
+---
+
+### 🔹 C. UI 조건 렌더링
+
+| 구분 | API | 목적 | React 대비 | 참고 파일 |
+|---|---|---|---|---|
+| 단일 조건 | `<Show>` | when / fallback | `&&`보다 안전 | [Basic5.tsx](src/components/Basic5.tsx) |
+| 다중 분기 | `<Switch>` / `<Match>` | 상태 분기 | if-else 대체 | [Basic11.tsx](src/components/Basic11.tsx) |
+
+---
+
+### 🔹 D. 라이프사이클
+
+| 구분 | API | 언제 사용 | 참고 파일 |
+|---|---|---|---|
+| 마운트 | onMount | DOM 접근, observer | [Basic7.tsx](src/components/Basic7.tsx) |
+| 정리 | onCleanup | 이벤트 해제, 타이머 | [Basic7.tsx](src/components/Basic7.tsx) |
+
+**원칙**
+- `createEffect` ≠ 라이프사이클  
+- 생명주기 목적이면 **onMount / onCleanup 우선**
+
+---
+
+### 🔹 E. 데이터 패칭
+
+| API | 특징 | 실무 포인트 | 참고 파일 |
+|---|---|---|---|
+| createResource | loading / error 내장 | React Query 대체 | [Basic10.tsx](src/components/Basic10.tsx) |
+|  | signal 기반 재요청 | 파라미터 변경 자동 | [Basic10.tsx](src/components/Basic10.tsx) |
+
+---
+
+### 🔹 F. 컴포넌트 설계
+
+| 항목 | API | 이유 | 참고 파일 |
+|---|---|---|---|
+| children | ParentComponent | children도 reactive | [Basic12.tsx](src/components/Basic12.tsx) |
+| props 분해 | splitProps | 반응성 유지 | [Basic13.tsx](src/components/Basic13.tsx) |
+| 기본값 | mergeProps | default props | [Basic14.tsx](src/components/Basic14.tsx) |
+
+---
+
+### 🔹 G. DOM / 스타일
+
+| 항목 | API | 이유 | 참고 파일 |
+|---|---|---|---|
+| 클래스 | classList | 조건부 안전 | [Basic15.tsx](src/components/Basic15.tsx) |
+| DOM 접근 | ref | SSR-safe | [Basic16.tsx](src/components/Basic16.tsx) |
+| 이벤트 | inline handler | 자동 batch 처리 | [Basic9.tsx](src/components/Basic9.tsx) |
+
+
+---
+
+
+## 2. Solid 기준 SPA 설계 원칙
+
+### 🔹 1. 컴포넌트 설계 기준
+
+#### ❌ React식 사고
+- state는 많아도 됨
+- rerender 감안
+- memo는 최적화 옵션
+
+#### ⭕ Solid식 사고
+- 상태는 최대한 쪼갠다
+- rerender 개념이 없음
+- memo는 기본 설계 도구
+
+**원칙**  
+> 컴포넌트 단위가 아니라  
+> **데이터 단위로 반응성을 설계한다**
+
+---
+
+### 🔹 2. 상태 배치 전략
+
+| 상태 유형 | 위치 |
+|---|---|
+| UI 토글 | 컴포넌트 내부 signal |
+| 입력값 | signal / store |
+| 리스트 | store + For |
+| 서버 데이터 | resource |
+| 전역 UI | context (최소화) |
+
+---
+
+### 🔹 3. SPA 페이지 구조 권장안
+
+```text
+/src
+ ├─ routes
+ │   ├─ list.tsx        // 페이지 (상태 소유)
+ │   └─ detail.tsx
+ ├─ components
+ │   ├─ ListView.tsx    // 순수 UI
+ │   └─ Item.tsx
+ ├─ stores
+ │   └─ listStore.ts    // createStore
+ └─ services
+     └─ api.ts          // fetcher
+```
+
+---
+
+### 🔹 4. 데이터 흐름 규칙
+
+**원칙**  
+> 데이터는 항상 상위 → 하위로만 흐른다
+
+- signal / memo / resource는 **값이 아닌 참조**로 전달한다
+- props에서 `value()` 형태의 접근을 허용한다
+- 하위 컴포넌트는 상태를 **소유하지 않고 소비만** 한다
 
 ```ts
-// src/App.tsx
-const App: Component = () => {
-  return <div>Hello Solid</div>;
-};
+const [checked, setChecked] = createSignal(false);
+
+<Item checked={checked} />
+
+function Item(props) {
+  return <input checked={props.checked()} />;
+}
 ```
-
-* 정상 구동
-* 브라우저 + VSCode 터미널 로그 분리 인지
-* 서버/클라이언트 이중 실행 구조 이해
-
-👉 **이 상태가 출발점**
 
 ---
 
-## ✅ STEP 1. Signal (기본 상태)
+### ❌ 금지 패턴
 
-### 목적
-
-* React `useState`와 가장 유사
-* “상태 = 함수 호출”에 익숙해지기
-
-```tsx
-import { Component, createSignal } from 'solid-js';
-
-const App: Component = () => {
-  const [count, setCount] = createSignal<number>(0);
-
-  return (
-    <div>
-      <p>count: {count()}</p>
-      <button onClick={() => setCount(count() + 1)}>+</button>
-    </div>
-  );
-};
-
-export default App;
-```
-
-### 체크 포인트
-
-* `count`는 값 ❌ / 함수 ⭕
-* 컴포넌트 재실행 ❌
-* DOM만 갱신 ⭕
+- React식 값 복사 전달
+- props에서 signal을 다시 감싸는 행위
+- 상위 상태를 하위 컴포넌트에서 재정의하는 구조
 
 ---
 
-## ✅ STEP 2. Memo & Effect (반응성 핵심)
+### 🔹 5. effect 사용 규칙 (중요)
 
-### 목적
+Solid에서 effect는 **반응성의 기본 도구가 아니다**  
+명확한 목적이 있을 때만 제한적으로 사용한다
 
-* `useMemo`, `useEffect`와의 **개념 차이 체감**
+| 목적 | 권장 API |
+|---|---|
+| DOM 접근 | `onMount` |
+| 데이터 파생 | `createMemo` |
+| 서버 요청 | `createResource` |
+| 로그 / 외부 시스템 연동 | `createEffect` |
 
-```tsx
-import {
-  Component,
-  createSignal,
-  createMemo,
-  createEffect,
-} from 'solid-js';
+**운영 기준**
 
-const App: Component = () => {
-  console.log('App 실행');
-
-  const [count, setCount] = createSignal(0);
-
-  const double = createMemo(() => {
-    console.log('double 계산');
-    return count() * 2;
-  });
-
-  createEffect(() => {
-    console.log('effect 실행:', count());
-  });
-
-  return (
-    <div>
-      <p>count: {count()}</p>
-      <p>double: {double()}</p>
-      <button onClick={() => setCount(count() + 1)}>+</button>
-    </div>
-  );
-};
-
-export default App;
-```
-
-### 체크 포인트
-
-* `App 실행`은 **서버/브라우저 각각 1회**
-* 버튼 클릭 시:
-
-  * memo / effect만 실행
-  * 컴포넌트 재실행 ❌
+- `createEffect`는 최후 수단
+- 값 계산에 effect를 사용했다면 설계 오류를 의심
+- effect 내부에서 state를 다시 변경하는 패턴 지양
 
 ---
 
-## ✅ STEP 3. 조건 렌더링 (`Show`)
+### 🔹 6. 성능 기준 (Solid 강점 활용)
 
-### 목적
+- `<For>` 사용 시 `key` 불필요
+- `createMemo` 비용은 사실상 무시 가능
+- 상태를 상위로 끌어올리는 설계 지양
+- `context`는 전역 UI 상태에만 최소 사용
 
-* `{cond && <Comp />}` 탈피
-* SSR-safe 패턴 습득
+**권장 방향**
 
-```tsx
-import { Component, createSignal, Show } from 'solid-js';
-
-const App: Component = () => {
-  const [count, setCount] = createSignal(0);
-
-  return (
-    <div>
-      <button onClick={() => setCount(count() + 1)}>+</button>
-
-      <Show when={count() > 0} fallback={<p>zero</p>}>
-        <p>positive: {count()}</p>
-      </Show>
-    </div>
-  );
-};
-
-export default App;
-```
-
-### 체크 포인트
-
-* 조건 분기 자체가 reactive node
-* 서버/클라이언트 동일 동작
+> 성능 최적화는 옵션이 아니라  
+> **초기 설계의 결과물**이어야 한다
 
 ---
 
-## ✅ STEP 4. 리스트 렌더링 (`For`)
+### 🔹 7. Solid SPA 설계 체크리스트
 
-### 목적
-
-* `map` 대신 **fine-grained list update** 이해
-
-```tsx
-import { Component, createSignal, For } from 'solid-js';
-
-const App: Component = () => {
-  const [items, setItems] = createSignal<number[]>([1, 2, 3]);
-
-  const addItem = () => {
-    setItems([...items(), items().length + 1]);
-  };
-
-  return (
-    <div>
-      <button onClick={addItem}>add</button>
-
-      <ul>
-        <For each={items()}>
-          {(item) => <li>{item}</li>}
-        </For>
-      </ul>
-    </div>
-  );
-};
-
-export default App;
-```
-
-### 체크 포인트
-
-* 기존 DOM 재사용
-* key 직접 관리 ❌
-* React `map`과 성능/동작 모델 차이
+- effect보다 memo를 먼저 고려했는가
+- 조건 렌더링에 `&&`를 사용하지 않았는가
+- 리스트 렌더링에 `map` 대신 `<For>`를 사용했는가
+- props 구조 분해 시 반응성을 깨지 않았는가
+- DOM 접근이 mount 이후에 이루어지는가
+- 상태를 최소 단위로 분해했는가
 
 ---
 
-## ✅ STEP 5. Store (객체 상태)
+### 🔹 8. 결론 (실무 기준)
 
-### 목적
+Solid SPA 설계의 핵심
 
-* 불변성 강박 제거
-* deep reactive 객체 이해
+- 작은 API 집합
+- 명확한 반응성 규칙
+- 데이터 단위 중심 사고
 
-```tsx
-import { Component } from 'solid-js';
-import { createStore } from 'solid-js/store';
+**React 대비**
 
-const App: Component = () => {
-  const [state, setState] = createStore({
-    user: { name: 'Kim', age: 20 },
-  });
+- 러닝 커브 ↓  
+- 사고 전환 비용 ↑  
 
-  return (
-    <div>
-      <p>{state.user.name}</p>
-      <button onClick={() => setState('user', 'age', (a) => a + 1)}>
-        age++
-      </button>
-    </div>
-  );
-};
-
-export default App;
-```
-
-### 체크 포인트
-
-* 불변성 강제 ❌
-* 부분 업데이트 ⭕
-* 대형 상태에 유리
-
----
-
-## ✅ STEP 6. 서버/클라이언트 안전 패턴 (Vinxi 필수)
-
-### 목적
-
-* SSR/Hybrid 대비
-
-```tsx
-import { Component, createEffect } from 'solid-js';
-
-const App: Component = () => {
-  createEffect(() => {
-    console.log('window 접근 가능:', window.location.href);
-  });
-
-  return <div>Safe Solid</div>;
-};
-
-export default App;
-```
-
-### 규칙
-
-* `window`, `document` → effect 안
-* 컴포넌트 상단 ❌
-
----
-
-## 📌 전체 학습 흐름 요약
-
-| 단계     | 핵심                  |
-| ------ | ------------------- |
-| Step 1 | Signal = 상태         |
-| Step 2 | Memo / Effect = 반응성 |
-| Step 3 | 조건 = Show           |
-| Step 4 | 리스트 = For           |
-| Step 5 | 객체 상태 = Store       |
-| Step 6 | 서버/클라이언트 분리         |
+초기에는 불편하지만,  
+규칙을 체화하면 **복잡도가 낮고 예측 가능한 SPA**를 지속적으로 구축할 수 있다.
 
 ---
